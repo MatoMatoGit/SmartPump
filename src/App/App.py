@@ -22,7 +22,7 @@ class HwDrivers:
     def __init__(self):
         self.RgbLed = RgbLed(11, 12, 13)
         self.PumpRelay = Supply(1, 200)
-        self.Pump = WaterPump(self.PumpRelay, 200)
+        self.Pump = WaterPump(self.PumpRelay, 800)
         self.Float = FloatSensor(3)
 
 
