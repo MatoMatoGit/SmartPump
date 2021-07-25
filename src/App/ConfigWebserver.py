@@ -43,16 +43,13 @@ class ConfigWebserver(Webserver):
     def __init__(self):
         super().__init__(ConfigWebserver.Webpage)
 
-        self.RegisterQueryHandle('time', ConfigWebserver.QueryHandleTime)
-        self.RegisterQueryHandle('amount', ConfigWebserver.QueryHandleAmount)
+        self.RegisterQueryHandle('time', ConfigWebserver.QueryHandleTime, self)
+        self.RegisterQueryHandle('amount', ConfigWebserver.QueryHandleAmount, self)
 
-    @staticmethod
     def QueryHandleTime(query, value):
         print("{}:{}".format(query, value))
         ConfigWebserver.Time = value
 
-
-    @staticmethod
     def QueryHandleAmount(query, value):
         print("{}:{}".format(query, value))
         ConfigWebserver.Amount = value
