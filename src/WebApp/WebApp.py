@@ -72,10 +72,10 @@ class WebApp:
         wlan_ap = WLAN(network.AP_IF)
         self.NetCon.WlanInterface(wlan_ap, NetCon.MODE_ACCESS_POINT)
 
-        self.Webserver = Webserver(self.Webpage)
+        self.Webserver = Webserver(self.Webpage, 2)
 
-        self.Webserver.RegisterQueryHandle('ssid', WebApp.QueryHandleWifiSsid)
-        self.Webserver.RegisterQueryHandle('pwd', WebApp.QueryHandleWifiPwd)
+        self.Webserver.RegisterQueryHandle('ssid', WebApp.QueryHandleWifiSsid, self)
+        self.Webserver.RegisterQueryHandle('pwd', WebApp.QueryHandleWifiPwd, self)
 
         self.Webserver.SvcDependencies({self.NetCon: Service.DEP_TYPE_RUN_ALWAYS_BEFORE_INIT})
 
@@ -90,15 +90,13 @@ class WebApp:
     def Run(self):
         self.Scheduler.Run()
 
-    @staticmethod
-    def QueryHandleWifiSsid(query, value):
+    def QueryHandleWifiSsid(self, query, value):
         print("{}:{}".format(query, value))
         WebApp.Ssid = value
         if WebApp.Pwd is not None:
             WebApp.SaveAndReset()
 
-    @staticmethod
-    def QueryHandleWifiPwd(query, value):
+    def QueryHandleWifiPwd(self, query, value):
         print("{}:{}".format(query, value))
         WebApp.Pwd = value
         if WebApp.Ssid is not None:
