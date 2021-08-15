@@ -30,7 +30,7 @@ class HwDrivers:
         self.RgbLed = RgbLed(Pins.CFG_HW_PIN_LED_RED,
                              Pins.CFG_HW_PIN_LED_GREEN, Pins.CFG_HW_PIN_LED_BLUE)
         self.PumpMosfet = Supply(Pins.CFG_HW_PIN_PUMP_MOSFET, 1000)
-        self.Pump = WaterPump(self.PumpMosfet, 20)
+        self.Pump = WaterPump(self.PumpMosfet, 800)
         self.Float = FloatSensor(Pins.CFG_HW_PIN_FLOAT_SENSOR)
 
 
@@ -83,7 +83,7 @@ class App(Observer):
 
         self.Webserver = ConfigWebserver(self.Config)
 
-        self.Irrigation = IrrigationController(self.Drivers.Pump, self.Config)
+        self.Irrigation = IrrigationController(self.Drivers.Pump, self.Config, True)
 
         self.FloatSensor = Sensor.Sensor(self.DIR,
                                          "float",
@@ -135,14 +135,17 @@ class App(Observer):
 
     def Update(self, arg):
         if arg is IrrigationController.STATE_PUMPING:
-            self.Scheduler.ServiceRegister(self.FloatSensor)
-            #self.Scheduler.ServiceDeregister(self.Webserver)
-            self.Webserver.SvcMode = Service.MODE_RUN_ONCE
-            self.Webserver.SvcDeactivate()
-            self.FloatSensor.SvcActivate()
+            # Only register the FloatSensor service if it is not
+            # in the list of services.
+            if self.FloatSensor not in self.Scheduler.Services:
+                self.Scheduler.ServiceRegister(self.FloatSensor)
+                #self.Scheduler.ServiceDeregister(self.Webserver)
+                self.Webserver.SvcMode = Service.MODE_RUN_ONCE
+                self.Webserver.SvcDeactivate()
+                self.FloatSensor.SvcActivate()
         elif arg is IrrigationController.STATE_WAITING:
             self.FloatSensor.SvcDeactivate()
             self.Scheduler.ServiceDeregister(self.FloatSensor)
-            #self.Scheduler.ServiceRegister(self.Webserver)
+            # self.Scheduler.ServiceRegister(self.Webserver)
             self.Webserver.SvcMode = Service.MODE_RUN_PERIODIC
             self.Webserver.SvcActivate()
