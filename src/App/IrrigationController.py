@@ -84,7 +84,7 @@ class IrrigationController(IrrigationControllerService, Observer):
 
                     print("[IRC] {} mL in {} parts".format(amount, self.PartsLeft))
 
-                    print("[IRC] Pumping part {}: {} seconds".format((self.PartsTotal - self.PartsLeft), self.PumpDurationPerPart))
+                    print("[IRC] Pumping part {}: {} seconds".format(self._CurrentPart(), self.PumpDurationPerPart))
                     self.SvcIntervalSet(self.PumpDurationPerPart)
                     self.IntervalCount = self.Config.Values[IrrigationConfig.IRRIGATION_CONFIG_INTERVAL]
 
@@ -99,7 +99,7 @@ class IrrigationController(IrrigationControllerService, Observer):
         # The pump is enabled.
         elif self.State.State is IrrigationController.STATE_PUMPING:
             if self.PartsLeft > 1:
-                print("[IRC] Settling part {}: {} seconds".format((self.PartsTotal - self.PartsLeft), self.SETTLE_PERIOD))
+                print("[IRC] Settling part {}: {} seconds".format(self._CurrentPart(), self.SETTLE_PERIOD))
                 self.Pump.Disable()
                 self.State.State = IrrigationController.STATE_SETTLING
                 self.SvcIntervalSet(self.SETTLE_PERIOD)
@@ -116,7 +116,7 @@ class IrrigationController(IrrigationControllerService, Observer):
         elif self.State.State is self.STATE_SETTLING:
             if self.PartsLeft > 1:
                 self.PartsLeft -= 1
-                print("[IRC] Pumping part {}: {} seconds".format((self.PartsTotal - self.PartsLeft), self.PumpDurationPerPart))
+                print("[IRC] Pumping part {}: {} seconds".format(self._CurrentPart(), self.PumpDurationPerPart))
                 self.Pump.Enable()
                 self.State.State = IrrigationController.STATE_PUMPING
                 self.SvcIntervalSet(self.PumpDurationPerPart)
@@ -146,3 +146,6 @@ class IrrigationController(IrrigationControllerService, Observer):
         print("[IRC] Emergency! Stopping pump.")
         self.Pump.Disable()
         self.State.State = IrrigationController.STATE_EM_STOP
+
+    def _CurrentPart(self):
+        return self.PartsTotal - self.PartsLeft
