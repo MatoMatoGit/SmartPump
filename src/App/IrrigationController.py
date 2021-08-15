@@ -30,9 +30,10 @@ class IrrigationController(IrrigationControllerService, Observer):
         self.State = Subject()
         self.State.State = IrrigationController.STATE_WAITING
         self.Config = config
-        self.PumpDurationSec = 0
+        self.PumpDurationPerPart = 0
         self.Time = SystemTime.InstanceGet()
         self.IntervalCount = 1
+        self.Parts = 1
         return
 
     def SvcRun(self):
@@ -66,9 +67,11 @@ class IrrigationController(IrrigationControllerService, Observer):
                     self.State.State = IrrigationController.STATE_PUMPING
 
                     # Calculate the pump duration from the amount.
-                    self.PumpDurationSec = self.Pump.DurationSecGet(self.Config.Values[IrrigationConfig.IRRIGATION_CONFIG_AMOUNT])
-                    print("[IRC] Pumping for {} seconds".format(self.PumpDurationSec))
-                    self.SvcIntervalSet(self.PumpDurationSec)
+                    self.PumpDurationPerPart = int(self.Pump.DurationSecGet(self.Config.Values[IrrigationConfig.IRRIGATION_CONFIG_AMOUNT]) / self.Config.Values[IrrigationConfig.IRRIGATION_CONFIG_PARTS])
+                    self.Parts = self.Config.Values[IrrigationConfig.IRRIGATION_CONFIG_PARTS]
+
+                    print("[IRC] Pumping for {} seconds".format(self.PumpDurationPerPart))
+                    self.SvcIntervalSet(self.PumpDurationPerPart)
                     self.IntervalCount = self.Config.Values[IrrigationConfig.IRRIGATION_CONFIG_INTERVAL]
                     print("[IRC] Next irrigation in {} days".format(self.IntervalCount))
                     return
@@ -78,10 +81,14 @@ class IrrigationController(IrrigationControllerService, Observer):
 
         # The pump is enabled.
         elif self.State.State is IrrigationController.STATE_PUMPING:
-            print("[IRC] Disabling pump")
-            self.Pump.Disable()
-            self.State.State = IrrigationController.STATE_WAITING
-            self.SvcIntervalSet(60)
+            if self.Parts > 1:
+                self.Parts -= 1
+                # TODO: Implementation
+            else:
+                print("[IRC] Disabling pump")
+                self.Pump.Disable()
+                self.State.State = IrrigationController.STATE_WAITING
+                self.SvcIntervalSet(60)
             return
 
         # An emergency stop has occurred because the float sensor was triggered.
