@@ -1,7 +1,6 @@
 from upyiot.system.Service.ServiceScheduler import Service
 from upyiot.system.SystemTime.SystemTime import SystemTime
-from upyiot.middleware.SubjectObserver.SubjectObserver import Observer
-from upyiot.middleware.SubjectObserver.SubjectObserver import Subject
+from upyiot.middleware.SubjectObserver.SubjectObserver import Observer, Subject
 from micropython import const
 
 from App.IrrigationConfig import IrrigationConfig
@@ -11,7 +10,7 @@ class IrrigationControllerService(Service):
     IRRIGATION_CONTROLLER_SERVICE_MODE = Service.MODE_RUN_PERIODIC
 
     def __init__(self):
-        super().__init__("Irc", self.IRRIGATION_CONTROLLER_SERVICE_MODE, {})
+        super().__init__("IrgCtrl", self.IRRIGATION_CONTROLLER_SERVICE_MODE, {})
 
 
 class IrrigationController(IrrigationControllerService, Observer):
@@ -35,10 +34,11 @@ class IrrigationController(IrrigationControllerService, Observer):
         self.Config = config
         self.PumpDurationPerPart = 0
         self.Time = SystemTime.InstanceGet()
-        self.IntervalCount = 1
+        self.IntervalRemaining = self.IntervalSetting = 1
         self.PartsLeft = 1
         self.PartsTotal = 1
         self.EmcStopEnabled = emc_stop
+        self.Config.SetCallback(IrrigationConfig.IRRIGATION_CONFIG_INTERVAL, IrrigationController.IntervalChangeCallback, self)
         return
 
     def SvcRun(self):
@@ -77,7 +77,7 @@ class IrrigationController(IrrigationControllerService, Observer):
             if hour_now is hour_schedule and minute_now is minute_schedule:
 
                 # Check if a day needs to be skipped.
-                if self.IntervalCount is 1:
+                if self.IntervalRemaining is 1:
                     amount = self.Config.Values[IrrigationConfig.IRRIGATION_CONFIG_AMOUNT]
                     self.PartsTotal = self.Config.Values[IrrigationConfig.IRRIGATION_CONFIG_PARTS]
 
@@ -86,14 +86,12 @@ class IrrigationController(IrrigationControllerService, Observer):
                         amount / self.PartsTotal))
                     self.PartsLeft = self.PartsTotal
                     print("[IRC] {} mL in {} parts".format(amount, self.PartsLeft))
-                    
-                    self.IntervalCount = self.Config.Values[IrrigationConfig.IRRIGATION_CONFIG_INTERVAL]
 
                     self._StartPumpAndTransition(self.STATE_PUMPING)
                     self.SvcIntervalSet(self.PumpDurationPerPart)
                 else:
-                    self.IntervalCount -= 1
-                    print("[IRC] Skipping 1 day. Days left: {}".format(self.IntervalCount))
+                    self.IntervalRemaining -= 1
+                    print("[IRC] Skipping 1 day. Days left: {}".format(self.IntervalRemaining))
             
             else:
                 self.SvcIntervalSet(self.QUARTER_MINUTE_INTERVAL) # Restore default interval in case anything else was set.
@@ -104,7 +102,8 @@ class IrrigationController(IrrigationControllerService, Observer):
                 self._StopPumpAndTransition(self.STATE_SETTLING)
                 self.SvcIntervalSet(self.SETTLE_PERIOD)
             else:
-                print("[IRC] Next irrigation in {} days".format(self.IntervalCount))
+                print("[IRC] Next irrigation in {} days".format(self.IntervalSetting))
+                self.IntervalRemaining = self.IntervalSetting
                 self._StopPumpAndTransition(self.STATE_WAITING)
                 self.SvcIntervalSet(self.QUARTER_MINUTE_INTERVAL)
 
@@ -116,7 +115,8 @@ class IrrigationController(IrrigationControllerService, Observer):
                 self._StartPumpAndTransition(self.STATE_PUMPING)
                 self.SvcIntervalSet(self.PumpDurationPerPart)
             else:
-                print("[IRC] Next irrigation in {} days".format(self.IntervalCount))
+                print("[IRC] Next irrigation in {} days".format(self.IntervalSetting))
+                self.IntervalRemaining = self.IntervalSetting
                 self._StopPumpAndTransition(self.STATE_WAITING)
                 self.SvcIntervalSet(self.QUARTER_MINUTE_INTERVAL)
 
@@ -127,9 +127,14 @@ class IrrigationController(IrrigationControllerService, Observer):
     def AttachStateObserver(self, observer):
         self.State.Attach(observer)
 
+    # Observer Update method. Called when the float sensor state changes.
     def Update(self, arg):
         if arg is IrrigationController.FLOAT_SENSOR_EM_STOP_VALUE:
             self._EmergencyStop()
+
+    def IntervalChangeCallback(self, value):
+        print("[IRC] Interval setting changed to: {}".format(value))
+        self.IntervalSetting = self.IntervalRemaining = value
 
     def _EmergencyStop(self):
         if self.EmcStopEnabled is True:

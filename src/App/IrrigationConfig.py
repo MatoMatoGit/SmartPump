@@ -15,17 +15,17 @@ class IrrigationConfig:
                        IrrigationConfig.IRRIGATION_CONFIG_PARTS: 1,
                        IrrigationConfig.IRRIGATION_CONFIG_INTERVAL: 1}
 
-        self.Callbacks = {IrrigationConfig.IRRIGATION_CONFIG_TIME: None,
-                          IrrigationConfig.IRRIGATION_CONFIG_AMOUNT: None,
-                          IrrigationConfig.IRRIGATION_CONFIG_ENABLED: None,
-                          IrrigationConfig.IRRIGATION_CONFIG_PARTS: None,
-                          IrrigationConfig.IRRIGATION_CONFIG_INTERVAL: None}
+        self.Callbacks = {}
         return
 
-    def SetCallback(self, key, callback):
-        if key in self.Callbacks.keys():
-            self.Callbacks[key] = callback
+    def SetCallback(self, key, callback, context):
+        if key not in self.Callbacks.keys():
+            self.Callbacks[key] = (callback, context)
 
     def SetValue(self, key, value):
         if key in self.Values.keys():
             self.Values[key] = value
+            if key in self.Callbacks.keys():
+                print(self.Callbacks[key][0])
+                print(self.Callbacks[key][1])
+                self.Callbacks[key][0](self.Callbacks[key][1], value)

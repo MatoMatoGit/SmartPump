@@ -34,11 +34,11 @@ class HwDrivers:
         self.Float = FloatSensor(Pins.CFG_HW_PIN_FLOAT_SENSOR)
 
 
-class WlanHandover(Service):
-    WLAN_HANDOVER_SERVICE_MODE = Service.MODE_RUN_ONCE
+class ModeChanger(Service):
+    MODE_CHANGER_SERVICE_MODE = Service.MODE_RUN_ONCE
 
     def __init__(self, netcon_svc, wlan, sched, irrigation):
-        super().__init__("WlanHovr", self.WLAN_HANDOVER_SERVICE_MODE, {})
+        super().__init__("ModeChanger", self.MODE_CHANGER_SERVICE_MODE, {})
         self.Wlan = wlan
         self.NetCon = netcon_svc
         self.Mode = NetCon.MODE_STATION
@@ -107,14 +107,14 @@ class App(Observer):
             # Create the WLAN station interface.
             self.Wlan = WLAN(network.STA_IF)
             self.NetCon.WlanInterface(self.Wlan, NetCon.MODE_STATION)
-            self.Handover = WlanHandover(self.NetCon, self.Wlan, self.Scheduler, self.Irrigation)
-            self.Irrigation.SvcDependencies({self.Handover: Service.DEP_TYPE_RUN_ONCE_BEFORE_RUN,
+            self.ModeChanger = ModeChanger(self.NetCon, self.Wlan, self.Scheduler, self.Irrigation)
+            self.Irrigation.SvcDependencies({self.ModeChanger: Service.DEP_TYPE_RUN_ONCE_BEFORE_RUN,
                                              self.Time: Service.DEP_TYPE_RUN_ONCE_BEFORE_RUN})
-            self.Webserver.SvcDependencies({self.Handover: Service.DEP_TYPE_RUN_ONCE_BEFORE_RUN,
+            self.Webserver.SvcDependencies({self.ModeChanger: Service.DEP_TYPE_RUN_ONCE_BEFORE_RUN,
                                             self.Time: Service.DEP_TYPE_RUN_ONCE_BEFORE_RUN})
-            self.Handover.SvcDependencies({self.Time: Service.DEP_TYPE_RUN_ALWAYS_BEFORE_RUN})
-            self.Scheduler.ServiceRegister(self.Handover)
-            self.Handover.SvcActivate()
+            self.ModeChanger.SvcDependencies({self.Time: Service.DEP_TYPE_RUN_ALWAYS_BEFORE_RUN})
+            self.Scheduler.ServiceRegister(self.ModeChanger)
+            self.ModeChanger.SvcActivate()
 
         else:
             self.Wlan = WLAN(network.AP_IF)
